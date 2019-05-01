@@ -80,7 +80,7 @@ Windows版のJuliaをインストールすれば使用できます。、ある�
 ## 3. 基本編
 この章では、REPLの上でJuliaを使ってみましょう。
 ### 3.1 いじってみよう
-まずはじめに、プログラミング言語での定番、Hellow worldですが、これは、
+まずはじめに、プログラミング言語での定番、Hello worldですが、これは、
 
 ```julia
 println("Hello World!")
