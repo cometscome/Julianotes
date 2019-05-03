@@ -47,6 +47,7 @@
             - [3.3.2.3. 精度コントロール：If文とwhile文の紹介](#3323-精度コントロールif文とwhile文の紹介)
             - [3.3.2.4. 解析接続：引数の型の自由](#3324-解析接続引数の型の自由)
             - [3.3.2.5. 同じ名前の関数の定義：多重ディスパッチ](#3325-同じ名前の関数の定義多重ディスパッチ)
+        - [3.3.3. 特殊関数](#333-特殊関数)
 
 <!-- /TOC -->
 
@@ -802,8 +803,44 @@ println(f(2,eps=1e-10))
 ということもできます。ここで、```f(x;eps=1e-5)```としていますが、この```;```以降のepsは、キーワード引数と呼ばれるもので、```f(2)```のように省略することができます。もし変えたい場合には、```f(2,eps=1e-10)```などのようにします。
 
 
+### 3.3.3. 特殊関数
+次に、物理でよく使われる特殊関数を扱ってみましょう。
+ということで、第一種変形ベッセル関数を使った式
+$$
+g(x) = \sum_{n=0}^{10} (I_{n}(x) + n^2 I_{2n}(x))
+$$
+を計算してみます。ここで、$I_{n}(x)$は次数がnの第一種変形ベッセル関数です。
+特殊関数を使うためには、SpecialFunctions.jlを使います。
+まず、]を押してパッケージモードにしてから、
 
+```julia
+add SpecialFunctions
+```
+をしてパッケージをインストールします。その後、delキーを押してパッケージモードを終了します。以後は、```using SpecialFunctions```とすることで使うことができます。
+上の関数を計算するコードは
 
+```julia
+using SpecialFunctions
+function g(x)
+    gsum = 0
+    for n=0:10
+        gsum += besseli(n,x)+n^2*besseli(2n,x)
+    end
+    return gsum
+end
+```
+です。これをプロットするためには、
+
+```julia
+using Plots
+xs = range(0, 1, length=100)
+temp = g.(xs)
+plot(xs,temp)
+```
+とします。
+なお、SpecialFunctionsの中にどのような特殊関数があるかは、
+https://github.com/JuliaMath/SpecialFunctions.jl/blob/master/docs/src/index.md
+をみるとわかります。
 
 
 以下執筆予定
