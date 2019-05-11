@@ -54,6 +54,8 @@
         - [3.3.4. 1次元数値積分](#334-1次元数値積分)
             - [3.3.4.1. 台形公式による積分](#3341-台形公式による積分)
             - [3.3.4.2. パッケージを使った数値積分](#3342-パッケージを使った数値積分)
+        - [3.3.5. 常微分方程式](#335-常微分方程式)
+        - [3.3.6. 非線形関数の最小値](#336-非線形関数の最小値)
 
 <!-- /TOC -->
 
@@ -911,6 +913,7 @@ https://github.com/JuliaMath/QuadGK.jl
 ```julia
 add QuadGK
 ```
+
 をしてパッケージをインストールします。
 QuadGKでは、```quadgk(f,a,b)```で、関数f(x)とaからbの積分区間で積分ができます。
 
@@ -921,10 +924,150 @@ fsum2 = quadgk(f,-π,π)[1]/(2π)
 exact = ((π)^3/3 -(-π)^3/3)/(2π)
 println("quadgk $fsum2, exact $exact")
 ```
-```quadgk```のアウトプットは```(I,E)```という形で二つでてきます。ここで、丸括弧はタプル、と呼ばれるものです。配列は[]でしたが、タプルは()です。配列は要素の中身を変更できますが、タプルは変更できない、という違いがあります。
+
+ここで、```quadgk```のアウトプットは```(I,E)```という形で二つでてきます。ここで、丸括弧はタプル、と呼ばれるものです。配列は[]でしたが、タプルは()です。配列は要素の中身を変更できますが、タプルは変更できない、という違いがあります。
 アウトプットのうちIは積分の値、Eは誤差です。
 この手法の方が、台形公式よりもはるかに精度が高いことが見てとれると思います。
 
+
+### 3.3.5. 常微分方程式
+常微分方程式：
+
+$$
+\frac{du}{dt} = 1.01 u
+$$
+を解いてみましょう。常微分方程式を解くためのパッケージは、
+DifferentialEquations.jlです。
+http://docs.juliadiffeq.org/latest/
+
+使うためには、]を押してパッケージモードにしてから、
+
+```julia
+add DifferentialEquations
+```
+としてください。
+
+例えば、
+
+$$
+\frac{du}{dt} = 1.01 u
+$$
+という微分方程式を初期値$u(t=0)=0.5$で$t=0$から$t=1$まで解きたい場合を考えます。
+
+この場合、
+
+```julia
+using DifferentialEquations
+f(u,p,t) = 1.01*u
+u0=1/2
+tspan = (0.0,1.0)
+prob = ODEProblem(f,u0,tspan) #微分がfで初期値がu0の微分方程式du/dt = f(u)を解く。
+sol = solve(prob,Tsit5(),reltol=1e-8,abstol=1e-8) #Tsit5は解き方を指定
+nt = 50
+t = range(0.0, stop=1.0, length=nt) #0.0から1.0までのnt点を生成する
+for i=1:nt
+    println("t= $(t[i]), solution: $(sol(t[i])), exact solution $(0.5*exp(1.01t[i]))")
+end
+```
+とします。
+なお、厳密解は$u = 0.5 \exp(1.01 t)$なので、それとの比較を出力しました。
+
+微分方程式にパラメータがある場合やuがベクトルや行列の場合でも解くことができます。
+DifferentialEquations.jlのドキュメントにあるようなx,y,zの三次元空間におけるローレンツ方程式
+
+$$
+\frac{dx}{dt} =\sigma(y-x) \\
+\frac{dy}{dt} =x(\rho-z)-y \\
+\frac{dz}{dt} = xy-\beta z
+$$
+は、
+
+```julia
+function parameterized_lorenz(du,u,p,t) #微分dy、関数u、パラメータp、変数t
+ du[1] = p[1]*(u[2]-u[1])
+ du[2] = u[1]*(p[2]-u[3]) - u[2]
+ du[3] = u[1]*u[2] - p[3]*u[3]
+end
+
+u0 = [1.0,0.0,0.0] #x=1,y=0,z=0を初期値とする。
+tspan = (0.0,1.0) #時間は0から1まで。
+p = [10.0,28.0,8/3] #パラメータ三つ
+prob = ODEProblem(parameterized_lorenz,u0,tspan,p)
+```
+で解くことができます。
+
+また、マクロ@ode_defを用いるともう少し数学っぽい書き方ができます。
+マクロ、とは、```@```から始まるもので、これをつけるとその部分のコードを目的に応じて自動で書き換えることができるものです。有名なものとしては、時間を測る```@time```マクロがあります。
+マクロを使って問題を解くコードは、]でParameterizedFunctions.jlをインストールした後に、
+
+
+```julia
+using ParameterizedFunctions
+g = @ode_def LorenzExample begin
+  dx = σ*(y-x) #dxとあるので、xが微分されるもの。
+  dy = x*(ρ-z) - y
+  dz = x*y - β*z
+end σ ρ β #パラメータは三つある
+
+u0 = [1.0;0.0;0.0] #x=1,y=0,z=0を初期値とする。
+tspan = (0.0,1.0) #時間は0から1まで。
+p = [10.0,28.0,8/3] #σ ρ β を設定
+@time prob = ODEProblem(g,u0,tspan,p)
+```
+とすればよいです。
+ここで、```@time```マクロで解くのにかかった時間を計測しています。
+
+### 3.3.6. 非線形関数の最小値
+非線形関数$f(x)$を最小化する値$x$を求める問題もよくある問題です。
+これは、Optimというパッケージを使えばよいです。
+http://julianlsolvers.github.io/Optim.jl/stable/#user/minimization/
+使うためには、]を押してパッケージモードにしてから、
+
+```julia
+add Optim
+```
+としましょう。
+
+それでは、
+
+$$
+f(x,y) = (1.0 - x)^2 + 100(y - x^2)^2
+$$
+を最小化するx,yの組を求めてみましょう。コードは、
+
+```julia
+using Optim
+f(x) = (1.0 - x[1])^2 + 100.0 * (x[2] - x[1]^2)^2
+x0 = [0.0, 0.0] #初期値を0,0とした。
+a1 = optimize(f, x0)
+xsol = Optim.minimizer(a1) #関数fを最小化するxの値
+println("xsol = $xsol")
+fmin = Optim.minimum(a1) #関数fの最小値
+println("fmin = $fmin")
+```
+
+となります。
+minimizerというのが、最小化する変数を得るもので、minimumというのは関数の値を求めるものとなっています。
+
+次に、
+
+$$
+f(x) = 2x^2+3x+1
+$$
+という関数が$x=-2$から$x=1$の範囲で最小となるxを求めてみましょう。
+コードは、
+
+```julia
+using Optim
+f2(x) = 2x^2+3x+1
+a2 = optimize(f2, -2.0, 1.0) #-2から1の間の最小値を探す。
+xsol = Optim.minimizer(a2) #関数f2を最小化するxの値
+println("xsol = $xsol")
+fmin = Optim.minimum(a2) #関数f2の最小値
+println("fmin = $fmin")
+```
+となります。
+このように、非線形関数の最小値探索も簡単に計算することができます。
 
 
 以下執筆予定
